@@ -4,7 +4,9 @@ Conciliación del efectivo de una mensajería que cobra contra entrega: cuánto 
 
 El número piloto, que debe cuadrar al centavo:
 
-> deuda del mensajero = cobrado − liquidado − devoluciones aprobadas
+> deuda del mensajero = cobrado − liquidado − devoluciones
+
+Un pedido rechazado en la puerta nunca se cobra; una devolución es efectivo devuelto al cliente después de cobrar. El [glosario del plan](docs/plan-sprints.md#glosario) fija cada término.
 
 Pipeline bronze → silver → gold en DuckDB (local) y Dataform sobre BigQuery, con cargas incrementales, datos que llegan tarde, historial SCD tipo 2 y pruebas de calidad.
 
