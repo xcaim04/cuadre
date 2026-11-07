@@ -1,0 +1,13 @@
+[project]
+name = "ruta-cobrada"
+version = "0.0.1"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "sqlglot>=30.30.0",
+]
