@@ -1,0 +1,8 @@
+[
+  {"name": "id_evento", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "id_pedido", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "id_mensajero", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "tipo", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "ocurrido_en", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "importe", "type": "STRING", "mode": "NULLABLE"}
+]
