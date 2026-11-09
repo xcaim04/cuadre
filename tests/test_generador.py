@@ -44,6 +44,7 @@ def test_trae_los_defectos_prometidos(raw):
         por_archivo[archivo].append(e["ocurrido_en"])
     assert any(horas != sorted(horas) for horas in por_archivo.values()), "sin desorden"
     assert {e["tipo"] for _, e in eventos} == {"entrega", "rechazo", "devolucion"}
+    assert any(e["tipo"] == "entrega" and e["importe"] is None for _, e in eventos), "sin entregas sin cobro"
     pedidos = [p for a in (raw / "pedidos").glob("*.csv") for p in leer_csv(a)]
     assert max(Counter(p["id_pedido"] for p in pedidos).values()) > 1, "sin pedidos editados"
     nombres = {fila["mensajero"] for fila in leer_csv(raw / "liquidaciones.csv")}

@@ -60,12 +60,12 @@ def cargar_eventos(con: duckdb.DuckDBPyConnection, raw: Path) -> None:
         con.executemany("INSERT INTO bronze.rechazos_contrato VALUES (?, ?, ?, ?, current_timestamp)", rechazos)
 
 
-def ejecutar(raw: Path, db: Path | str = ":memory:") -> duckdb.DuckDBPyConnection:
+def ejecutar(raw: Path, db: Path | str = ":memory:", seeds: Path = RAIZ / "seeds") -> duckdb.DuckDBPyConnection:
     con = duckdb.connect(str(db))
     for capa in CAPAS:
         con.execute(f"CREATE SCHEMA IF NOT EXISTS {capa}")
         for archivo in sorted((RAIZ / "sql" / capa).glob("*.sql")):
-            con.execute(archivo.read_text().replace("{{raw}}", str(raw)))
+            con.execute(archivo.read_text().replace("{{raw}}", str(raw)).replace("{{seeds}}", str(seeds)))
         if capa == "bronze":
             cargar_eventos(con, raw)
     return con
@@ -90,4 +90,6 @@ if __name__ == "__main__":
     print(con.sql("SELECT schema_name || '.' || table_name AS tabla, estimated_size AS filas "
                   "FROM duckdb_tables() ORDER BY tabla"))
     print(con.sql("SELECT motivo, count(*) AS lineas FROM bronze.rechazos_contrato GROUP BY motivo ORDER BY motivo"))
+    print(con.sql("SELECT origen, motivo, count(*) AS filas FROM silver.cuarentena GROUP BY ALL ORDER BY ALL"))
+    print(con.sql("SELECT estado, count(*) AS pedidos FROM silver.pedidos GROUP BY estado ORDER BY estado"))
     sys.exit(1 if fallos else 0)
