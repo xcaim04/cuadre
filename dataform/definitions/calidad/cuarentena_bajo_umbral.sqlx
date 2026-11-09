@@ -1,0 +1,4 @@
+config { type: "assertion", description: "Si más del 2 % de los eventos cae en cuarentena, algo cambió en la fuente y hay que mirarlo antes de publicar." }
+
+SELECT COUNTIF(motivo IS NOT NULL) AS en_cuarentena, COUNT(*) AS eventos FROM ${ref("silver", "eventos_revisados")}
+HAVING COUNTIF(motivo IS NOT NULL) > 0.02 * COUNT(*)

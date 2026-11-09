@@ -1,0 +1,5 @@
+config { type: "assertion", description: "No se devuelve a un cliente más de lo que se le cobró." }
+
+SELECT id_pedido FROM ${ref("silver", "eventos")}
+GROUP BY id_pedido
+HAVING SUM(IF(tipo = 'devolucion', importe, 0)) > SUM(IF(tipo = 'entrega', importe, 0))

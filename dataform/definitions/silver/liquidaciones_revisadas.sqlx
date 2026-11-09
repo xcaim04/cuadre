@@ -1,0 +1,14 @@
+config {
+  type: "table",
+  schema: "silver",
+  description: "Regla: una liquidación se asigna al mensajero por su alias normalizado; si el alias no está en el seed, va a cuarentena. Es una tabla completa: la planilla no trae una clave por fila y son pocas filas al día."
+}
+
+SELECT SAFE_CAST(l.fecha AS DATE) AS fecha, a.id_mensajero, l.mensajero AS alias_original,
+       SAFE_CAST(l.importe AS NUMERIC) AS importe, l._archivo_origen,
+       CASE WHEN a.id_mensajero IS NULL THEN 'mensajero_desconocido'
+            WHEN SAFE_CAST(l.fecha AS DATE) IS NULL OR SAFE_CAST(l.importe AS NUMERIC) IS NULL THEN 'dato_invalido'
+            WHEN SAFE_CAST(l.importe AS NUMERIC) <= 0 THEN 'importe_no_positivo'
+       END AS motivo
+FROM ${ref("bronze", "liquidaciones")} l
+LEFT JOIN ${ref("silver", "alias_mensajeros")} a ON ${comun.normalizar("l.mensajero")} = a.alias

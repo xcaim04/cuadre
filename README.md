@@ -10,7 +10,7 @@ Un pedido rechazado en la puerta nunca se cobra; una devolución es efectivo dev
 
 Pipeline bronze → silver → gold en DuckDB (local) y Dataform sobre BigQuery, con cargas incrementales, datos que llegan tarde, historial SCD tipo 2 y pruebas de calidad.
 
-**Estado:** sprint 4 (carga incremental). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
+**Estado:** sprint 5 (Dataform y BigQuery). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
 
 ## Fuentes
 
@@ -63,6 +63,16 @@ Cada fuente llega en un archivo por día, y la carga diaria solo procesa lo nuev
 
 La prueba principal carga los 64 días uno a uno y comprueba que todas las tablas quedan idénticas a las de una carga completa.
 
+## BigQuery y Dataform
+
+[dataform/](dataform) es la misma lógica escrita para BigQuery: un `.sqlx` por cada tabla de `sql/silver` y `sql/gold`, y una aserción por cada prueba de `sql/calidad`.
+
+- **Incrementales:** las tablas grandes (eventos revisados, historial de pedidos, depósitos, deuda y cierre) son `incremental` con `uniqueKey`, así que Dataform hace un `MERGE`, y con `when(incremental(), ...)` recalculan los últimos 5 días, como la versión local.
+- **Particiones:** eventos, depósitos, deuda y cierre se particionan por fecha; la deuda, además, se agrupa por mensajero. Las consultas incrementales de gold filtran por su columna de partición, que es lo que evita releer toda la tabla en BigQuery.
+- **Bronze:** [cargar_bigquery.py](cargar_bigquery.py) revisa los eventos contra el contrato y carga cada archivo con `--replace` en la partición de su día (`bronze.eventos$20260903`), así que repetir un día no duplica filas. Con `--bucket`, pasa antes por Cloud Storage.
+
+No hace falta cuenta de Google para comprobarlo: [tests/test_dataform.py](tests/test_dataform.py) compila el proyecto con la CLI de Dataform, valida que es SQL de BigQuery con sqlglot, lo traduce a DuckDB y comprueba que gold y las 12 aserciones dan lo mismo que la versión local, tanto en una ejecución completa como en una incremental. Lo que no está probado es la ejecución contra BigQuery real.
+
 ## Ejecutar
 
 ```bash
@@ -71,4 +81,10 @@ uv run python generar/generar_datos.py
 uv run python pipeline.py                      # carga completa
 uv run python pipeline.py --dia 2026-09-15     # carga diaria hasta ese día
 uv run pytest
+
+# Dataform (opcional; sin node_modules sus pruebas se saltan)
+cd dataform && npm install && npx dataform compile .
+
+# BigQuery (necesita gcloud y bq con sesión iniciada)
+uv run python cargar_bigquery.py --proyecto <id> --dia 2026-09-15 --mostrar
 ```

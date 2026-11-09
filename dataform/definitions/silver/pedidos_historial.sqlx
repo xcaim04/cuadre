@@ -1,0 +1,20 @@
+config {
+  type: "incremental",
+  schema: "silver",
+  uniqueKey: ["id_pedido", "valido_desde"],
+  description: "Regla (SCD tipo 2): cada versión de un pedido vale desde su actualizado_en hasta la versión siguiente; la última sigue vigente. Incremental: se reescribe el historial entero de cada pedido con versiones nuevas."
+}
+
+WITH versiones AS (
+    SELECT DISTINCT id_pedido, CAST(actualizado_en AS DATETIME) AS valido_desde, id_mensajero, cliente, direccion,
+           CAST(importe AS NUMERIC) AS importe
+    FROM ${ref("bronze", "pedidos")}
+),
+tocados AS (
+    SELECT DISTINCT id_pedido FROM ${ref("bronze", "pedidos")}
+    ${when(incremental(), `WHERE ${comun.fecha_archivo("_archivo_origen")} >=
+        (SELECT DATE_SUB(DATE(MAX(valido_desde)), INTERVAL ${comun.VENTANA} DAY) FROM ${self()})`)}
+)
+SELECT *, LEAD(valido_desde) OVER (PARTITION BY id_pedido ORDER BY valido_desde) AS valido_hasta
+FROM versiones
+WHERE id_pedido IN (SELECT id_pedido FROM tocados)

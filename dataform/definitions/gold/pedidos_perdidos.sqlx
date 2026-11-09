@@ -1,0 +1,15 @@
+config { type: "table", schema: "gold", description: "Pedido perdido: sigue sin entrega ni rechazo válidos más de 3 días después de creado; si tiene eventos en cuarentena, se muestra el motivo." }
+
+WITH corte AS (SELECT MAX(DATE(ocurrido_en)) AS fecha FROM ${ref("silver", "eventos")}),
+creados AS (SELECT id_pedido, MIN(valido_desde) AS creado_en FROM ${ref("silver", "pedidos_historial")} GROUP BY id_pedido),
+motivos AS (
+    SELECT id_pedido, STRING_AGG(DISTINCT motivo, ', ' ORDER BY motivo) AS motivo_cuarentena
+    FROM ${ref("silver", "cuarentena")} WHERE id_pedido IS NOT NULL GROUP BY id_pedido
+)
+SELECT p.id_pedido, p.id_mensajero, p.cliente, p.importe_actual, c.creado_en,
+       DATE_DIFF(corte.fecha, DATE(c.creado_en), DAY) AS dias_sin_cierre, m.motivo_cuarentena
+FROM ${ref("silver", "pedidos")} p
+JOIN creados c USING (id_pedido)
+CROSS JOIN corte
+LEFT JOIN motivos m USING (id_pedido)
+WHERE p.estado = 'pendiente' AND DATE_DIFF(corte.fecha, DATE(c.creado_en), DAY) > 3

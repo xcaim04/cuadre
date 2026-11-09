@@ -1,0 +1,5 @@
+# Proyecto de Google Cloud: cámbialo por el tuyo (o pásalo con --default-database al compilar).
+defaultProject: ruta-cobrada-datos
+defaultLocation: US
+defaultDataset: ruta_cobrada
+defaultAssertionDataset: calidad

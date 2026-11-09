@@ -1,0 +1,8 @@
+config { type: "table", schema: "silver", description: "Regla: lo que no se puede usar queda en cuarentena con su motivo; nunca cuenta como cero." }
+
+SELECT 'eventos' AS origen, id_evento AS referencia, id_pedido, id_mensajero, DATE(ocurrido_en) AS fecha,
+       importe, motivo
+FROM ${ref("silver", "eventos_revisados")} WHERE motivo IS NOT NULL
+UNION ALL
+SELECT 'liquidaciones', alias_original, CAST(NULL AS STRING), id_mensajero, fecha, importe, motivo
+FROM ${ref("silver", "liquidaciones_revisadas")} WHERE motivo IS NOT NULL

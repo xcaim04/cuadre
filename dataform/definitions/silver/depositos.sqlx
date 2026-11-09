@@ -1,0 +1,12 @@
+config {
+  type: "incremental",
+  schema: "silver",
+  uniqueKey: ["referencia"],
+  bigquery: { partitionBy: "fecha" },
+  description: "Depósitos del extracto bancario. Viene del banco: un tipo inválido detiene la ejecución."
+}
+
+SELECT CAST(fecha AS DATE) AS fecha, referencia, CAST(importe AS NUMERIC) AS importe, _archivo_origen
+FROM ${ref("bronze", "extracto_banco")}
+${when(incremental(), `WHERE ${comun.fecha_archivo("_archivo_origen")} >=
+    (SELECT DATE_SUB(MAX(fecha), INTERVAL ${comun.VENTANA} DAY) FROM ${self()})`)}
