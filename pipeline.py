@@ -79,17 +79,26 @@ def pruebas_calidad(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     }
 
 
+def publicar_si_pasa(con: duckdb.DuckDBPyConnection, destino: Path) -> dict[str, int]:
+    """Exporta gold a Parquet solo si pasan todas las pruebas de calidad; si alguna falla, no toca lo publicado."""
+    resultado = pruebas_calidad(con)
+    if not any(resultado.values()):
+        destino.mkdir(parents=True, exist_ok=True)
+        for (tabla,) in con.execute("SELECT table_name FROM duckdb_tables() WHERE schema_name = 'gold'").fetchall():
+            con.execute(f"COPY gold.{tabla} TO '{destino / tabla}.parquet' (FORMAT parquet)")
+    return resultado
+
+
 if __name__ == "__main__":
     raw = Path(sys.argv[1]) if len(sys.argv) > 1 else RAIZ / "data" / "raw"
     db = Path(sys.argv[2]) if len(sys.argv) > 2 else RAIZ / "ruta_cobrada.duckdb"
     con = ejecutar(raw, db)
-    fallos = 0
-    for prueba, filas in pruebas_calidad(con).items():
+    resultado = publicar_si_pasa(con, RAIZ / "data" / "gold")
+    for prueba, filas in resultado.items():
         print(f"{'OK   ' if filas == 0 else 'FALLA'} {prueba} ({filas} filas)")
-        fallos += filas > 0
-    print(con.sql("SELECT schema_name || '.' || table_name AS tabla, estimated_size AS filas "
-                  "FROM duckdb_tables() ORDER BY tabla"))
-    print(con.sql("SELECT motivo, count(*) AS lineas FROM bronze.rechazos_contrato GROUP BY motivo ORDER BY motivo"))
     print(con.sql("SELECT origen, motivo, count(*) AS filas FROM silver.cuarentena GROUP BY ALL ORDER BY ALL"))
-    print(con.sql("SELECT estado, count(*) AS pedidos FROM silver.pedidos GROUP BY estado ORDER BY estado"))
+    print(con.sql("SELECT id_mensajero, deuda, deuda_0_2, deuda_3_7, deuda_mas_7 FROM gold.deuda_mensajero_dia "
+                  "QUALIFY fecha = max(fecha) OVER () ORDER BY id_mensajero"))
+    fallos = sum(filas > 0 for filas in resultado.values())
+    print(f"{fallos} pruebas fallaron: gold no se publicó." if fallos else "Gold publicado en data/gold/.")
     sys.exit(1 if fallos else 0)

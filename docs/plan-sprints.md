@@ -52,15 +52,18 @@ Cada regla tiene su frase en el README y su prueba.
 
 ### Sprint 3: gold y calidad (v0.3.0)
 - `gold.deuda_mensajero_dia`: deuda acumulada por mensajero y día, con antigüedad en tramos (0–2, 3–7, más de 7 días).
-- `gold.cierre_caja`: por día, lo vendido frente a lo cobrado, liquidado y depositado.
-- `gold.pedidos_perdidos`: pedidos que siguen en cuarentena después de N días.
-- `sql/calidad/*.sql`, donde cero filas significa que pasa (unas 10 pruebas):
-  - claves únicas;
+- `gold.cierre_caja`: por día, lo cobrado, devuelto, liquidado y depositado, y dónde está el efectivo (en mensajeros, en la oficina o en el banco).
+- `gold.pedidos_perdidos`: pedidos sin entrega ni rechazo válidos más de 3 días después de creados, con el motivo si tienen eventos en cuarentena.
+- `sql/calidad/*.sql`, donde cero filas significa que pasa (12 pruebas):
+  - claves únicas de eventos y pedidos;
   - importes positivos;
-  - historial SCD sin solapes ni huecos;
-  - la deuda cuadra con silver;
-  - el cierre cuadra: vendido = cobrado + pendiente + rechazado;
-  - la cuarentena queda por debajo del umbral;
+  - historial SCD sin dos versiones que empiecen a la vez;
+  - lo cobrado es el importe vigente al entregar;
+  - un alias lleva a un solo mensajero;
+  - no se devuelve más de lo cobrado;
+  - la deuda final cuadra con silver y los tramos de antigüedad suman la deuda;
+  - los totales del cierre de caja son los de silver;
+  - la cuarentena queda por debajo del 2 % de los eventos;
   - lo depositado acumulado hasta cada fecha no supera lo liquidado acumulado hasta esa fecha (un depósito puede agrupar varios días).
 - `pipeline.py` no publica gold si falla alguna prueba de calidad.
 - Prueba clave: `gold.deuda_mensajero_dia` es igual a `verdad.json`, centavo a centavo.

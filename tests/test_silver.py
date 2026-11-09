@@ -3,32 +3,8 @@
 import json
 from decimal import Decimal
 
+from fabricar import LIQUIDACIONES, P1, correr, evento, uno
 from pipeline import ejecutar
-
-PEDIDOS = "id_pedido,actualizado_en,id_mensajero,cliente,direccion,importe\n"
-P1 = PEDIDOS + "P1,2026-09-01 10:00:00,M01,Ana López,Calle 1 #1,100.00\n"
-LIQUIDACIONES = "fecha,mensajero,importe\n"
-
-
-def evento(id_evento, tipo="entrega", cuando="2026-09-01 15:00:00", importe="100.00", pedido="P1", mensajero="M01"):
-    return json.dumps({"id_evento": id_evento, "id_pedido": pedido, "id_mensajero": mensajero, "tipo": tipo,
-                       "ocurrido_en": cuando, "importe": importe})
-
-
-def correr(tmp_path, eventos: dict[str, list[str]], pedidos=P1, liquidaciones=LIQUIDACIONES):
-    """eventos: día del archivo -> líneas."""
-    (tmp_path / "pedidos").mkdir()
-    (tmp_path / "pedidos" / "2026-09-01.csv").write_text(pedidos, encoding="utf-8")
-    (tmp_path / "eventos").mkdir()
-    for dia, lineas in eventos.items():
-        (tmp_path / "eventos" / f"{dia}.jsonl").write_text("\n".join(lineas) + "\n", encoding="utf-8")
-    (tmp_path / "liquidaciones.csv").write_text(liquidaciones, encoding="utf-8")
-    (tmp_path / "extracto_banco.csv").write_text("fecha,referencia,importe\n")
-    return ejecutar(tmp_path)
-
-
-def uno(con, sql):
-    return con.execute(sql).fetchone()[0]
 
 
 def test_evento_repetido_cuenta_una_vez(tmp_path):
