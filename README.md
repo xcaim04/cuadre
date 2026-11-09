@@ -10,11 +10,32 @@ Un pedido rechazado en la puerta nunca se cobra; una devolución es efectivo dev
 
 Pipeline bronze → silver → gold en DuckDB (local) y Dataform sobre BigQuery, con cargas incrementales, datos que llegan tarde, historial SCD tipo 2 y pruebas de calidad.
 
-**Estado:** sprint 0 (esqueleto). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
+**Estado:** sprint 1 (generador y bronze). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
+
+## Fuentes
+
+Los datos son sintéticos: [generar/generar_datos.py](generar/generar_datos.py) los crea con semilla fija para 8 mensajeros y 60 días, con defectos a propósito.
+
+| Archivo | Qué es | Defectos |
+|---|---|---|
+| `pedidos/AAAA-MM-DD.csv` | Pedidos de la tienda, uno por día | Un pedido editado reaparece con nuevo importe o dirección |
+| `eventos/AAAA-MM-DD.jsonl` | Entregas, rechazos y devoluciones de la mensajería | Duplicados, desordenados, un 5 % llega de 1 a 4 días tarde y algunas líneas no cumplen el contrato |
+| `liquidaciones.csv` | Planilla del cajero | El nombre del mensajero escrito de varias formas y pagos partidos en dos |
+| `extracto_banco.csv` | Depósitos de la oficina | Un depósito agrupa varios días |
+| `verdad.json` | Deuda real de cada mensajero al cierre de cada día | Solo la leen las pruebas, nunca el pipeline |
+
+El generador no escribe en una carpeta que ya tenga archivos, para no pisar datos.
+
+## Reglas de bronze
+
+- Bronze guarda cada fuente tal cual, todo como texto, con el archivo de origen y la hora de carga.
+- Un evento que no cumple [el contrato](contratos/evento.json) va a `bronze.rechazos_contrato` con su motivo, en lugar de romper la carga o perderse en silencio.
 
 ## Ejecutar
 
 ```bash
 uv sync
+uv run python generar/generar_datos.py
+uv run python pipeline.py
 uv run pytest
 ```
