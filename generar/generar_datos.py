@@ -48,6 +48,7 @@ P_TARDE = 0.05       # el evento llega de 1 a 4 días después
 P_DUPLICADO = 0.03   # el evento se reenvía con el mismo id
 P_BASURA = 0.3       # probabilidad de que un archivo diario traiga una línea que no cumple el contrato
 P_LIQUIDA = 0.85     # el mensajero pasa por la oficina al final del día
+ATRASADO = "M05"     # desde el día 30 este mensajero pasa menos por la oficina y entrega menos: su deuda envejece
 P_PARCIAL = 0.2      # la liquidación se anota en dos pagos
 
 
@@ -142,8 +143,10 @@ def generar(salida: Path, semilla: int = SEMILLA) -> None:
     for dia in dias():
         for mensajero, alias in MENSAJEROS.items():
             deuda[mensajero] += movimientos[mensajero, dia]
-            if deuda[mensajero] > 0 and rnd.random() < P_LIQUIDA:
-                monto = (deuda[mensajero] * rnd.randint(60, 100) // 100 // 10 * 10).quantize(CENTAVO)
+            atrasado = mensajero == ATRASADO and dia >= INICIO + timedelta(days=30)
+            if deuda[mensajero] > 0 and rnd.random() < (0.25 if atrasado else P_LIQUIDA):
+                parte = rnd.randint(10, 30) if atrasado else rnd.randint(60, 100)
+                monto = (deuda[mensajero] * parte // 100 // 10 * 10).quantize(CENTAVO)
                 mitad = (monto // 20 * 10).quantize(CENTAVO)
                 for pago in ([mitad, monto - mitad] if rnd.random() < P_PARCIAL else [monto]):
                     if pago > 0:

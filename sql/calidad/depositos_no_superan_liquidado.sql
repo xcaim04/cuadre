@@ -1,0 +1,2 @@
+-- Lo depositado acumulado hasta cada fecha no supera lo liquidado acumulado (un depósito puede agrupar días).
+SELECT fecha, en_oficina FROM gold.cierre_caja WHERE en_oficina < 0;
