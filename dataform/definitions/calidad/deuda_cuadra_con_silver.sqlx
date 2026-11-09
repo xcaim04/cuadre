@@ -1,0 +1,16 @@
+config { type: "assertion", description: "La deuda final de gold es la suma directa de silver: cobrado − devuelto − liquidado." }
+
+WITH desde_silver AS (
+    SELECT id_mensajero, SUM(importe) AS deuda FROM (
+        SELECT id_mensajero, CASE tipo WHEN 'entrega' THEN importe WHEN 'devolucion' THEN -importe ELSE 0 END AS importe
+        FROM ${ref("silver", "eventos")}
+        UNION ALL SELECT id_mensajero, -importe FROM ${ref("silver", "liquidaciones")}
+    ) GROUP BY id_mensajero
+),
+desde_gold AS (
+    SELECT id_mensajero, deuda FROM ${ref("gold", "deuda_mensajero_dia")}
+    WHERE fecha = (SELECT MAX(fecha) FROM ${ref("gold", "deuda_mensajero_dia")})
+)
+SELECT id_mensajero, s.deuda AS deuda_silver, g.deuda AS deuda_gold
+FROM desde_silver s FULL JOIN desde_gold g USING (id_mensajero)
+WHERE COALESCE(s.deuda, 0) <> COALESCE(g.deuda, 0)

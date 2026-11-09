@@ -81,12 +81,12 @@ Cada regla tiene su frase en el README y su prueba.
 
 ### Sprint 5: Dataform y BigQuery (v0.5.0)
 - `dataform/` con `workflow_settings.yaml`, `declare()` para bronze y las aserciones en el esquema `calidad`.
-- Silver y gold con `type: "incremental"`, `uniqueKey`, `bigquery: {partitionBy: "fecha", clusterBy: ["id_mensajero"]}` y `when(incremental(), ...)` con la misma ventana de reproceso.
-- El historial SCD tipo 2 se escribe como un `MERGE` en `operations`.
-- `tests/test_dataform.py`: compila con Dataform, valida el dialecto BigQuery con sqlglot, transpila a DuckDB y comprueba que salen las mismas tablas y los mismos números.
-- Una prueba verifica que las consultas sobre gold filtran por la columna de partición.
-- `cargar_bigquery.py`: `bq load` a bronze, con bucket opcional y `--dia` para la carga incremental.
-- Límite: sin cuenta de GCP, los bytes leídos solo se comprueban con `bq query --dry_run`; si no se ejecuta, queda documentado como no verificado.
+- Las tablas grandes de silver y gold son `type: "incremental"` con `uniqueKey` (Dataform genera un `MERGE`), particionadas por fecha y con `when(incremental(), ...)` que recalcula la misma ventana de 5 días. Las fotos del estado actual y la planilla de liquidaciones, que no trae clave por fila, son tablas completas.
+- El historial SCD tipo 2 es incremental con `uniqueKey: [id_pedido, valido_desde]`: el `MERGE` actualiza el `valido_hasta` de la versión anterior cuando llega una nueva.
+- `tests/test_dataform.py`: compila con Dataform, valida el dialecto BigQuery con sqlglot, transpila a DuckDB y comprueba los mismos números que la versión local, en una ejecución completa y en una incremental (hasta el día 10 y luego el resto con `MERGE`).
+- Una prueba verifica que las consultas incrementales de gold filtran por su columna de partición.
+- `cargar_bigquery.py`: revisa los eventos contra el contrato y carga cada archivo con `--replace` en la partición de su día (`bronze.tabla$AAAAMMDD`), con bucket opcional y `--dia` para la carga diaria.
+- Límite: sin cuenta de GCP no se ejecuta contra BigQuery real; los bytes leídos solo se comprobarían con `bq query --dry_run`.
 
 ### Sprint 6: BI y presentación (v1.0.0)
 - `bi/` con Evidence leyendo los Parquet de gold.

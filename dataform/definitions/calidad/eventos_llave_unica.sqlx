@@ -1,0 +1,3 @@
+config { type: "assertion", description: "Cada evento aparece una sola vez en silver." }
+
+SELECT id_evento FROM ${ref("silver", "eventos")} GROUP BY id_evento HAVING COUNT(*) > 1

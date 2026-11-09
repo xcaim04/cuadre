@@ -1,0 +1,10 @@
+config { type: "assertion", description: "El cierre de caja no pierde dinero: sus totales son los de silver." }
+
+WITH cierre AS (
+    SELECT SUM(cobrado) AS c, SUM(devuelto) AS d, SUM(liquidado) AS l, SUM(depositado) AS p FROM ${ref("gold", "cierre_caja")}
+)
+SELECT * FROM cierre
+WHERE c <> (SELECT COALESCE(SUM(importe), 0) FROM ${ref("silver", "eventos")} WHERE tipo = 'entrega')
+   OR d <> (SELECT COALESCE(SUM(importe), 0) FROM ${ref("silver", "eventos")} WHERE tipo = 'devolucion')
+   OR l <> (SELECT COALESCE(SUM(importe), 0) FROM ${ref("silver", "liquidaciones")})
+   OR p <> (SELECT COALESCE(SUM(importe), 0) FROM ${ref("silver", "depositos")})

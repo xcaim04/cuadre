@@ -1,0 +1,23 @@
+config {
+  type: "incremental",
+  schema: "gold",
+  uniqueKey: ["fecha"],
+  bigquery: { partitionBy: "fecha" },
+  description: "Cierre de caja diario: lo cobrado menos lo devuelto está en manos de los mensajeros, en la oficina o depositado. Incremental: se reescriben los últimos VENTANA días; los acumulados se calculan con todos."
+}
+
+WITH dias AS (
+    SELECT fecha, SUM(cobrado) AS cobrado, SUM(devuelto) AS devuelto, SUM(liquidado) AS liquidado,
+           SUM(deuda) AS en_mensajeros
+    FROM ${ref("gold", "deuda_mensajero_dia")} GROUP BY fecha
+),
+depositos AS (SELECT fecha, SUM(importe) AS depositado FROM ${ref("silver", "depositos")} GROUP BY fecha),
+cierre AS (
+    SELECT d.fecha, d.cobrado, d.devuelto, d.liquidado, COALESCE(p.depositado, 0) AS depositado, d.en_mensajeros,
+           SUM(d.liquidado - COALESCE(p.depositado, 0)) OVER w AS en_oficina,
+           SUM(COALESCE(p.depositado, 0)) OVER w AS depositado_acum
+    FROM dias d LEFT JOIN depositos p USING (fecha)
+    WINDOW w AS (ORDER BY d.fecha)
+)
+SELECT * FROM cierre
+${when(incremental(), `WHERE fecha >= (SELECT DATE_SUB(MAX(fecha), INTERVAL ${comun.VENTANA} DAY) FROM ${self()})`)}
