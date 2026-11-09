@@ -1,6 +1,6 @@
 [project]
 name = "ruta-cobrada"
-version = "0.5.0"
+version = "1.0.0"
 requires-python = ">=3.12"
 dependencies = [
     "duckdb>=2.0.0",

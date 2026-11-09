@@ -16,7 +16,7 @@ A bronze → silver → gold pipeline on DuckDB (local) and Dataform on BigQuery
 
 ![BI page: debt per courier split by age, and M05's daily debt against the rest](docs/capturas/bi-evidence.png)
 
-**Status:** sprint 6 (BI and presentation). The full plan is in [docs/plan-sprints.md](docs/plan-sprints.md).
+**Status:** v1.0.0, all 7 sprints done (0–6). The full plan is in [docs/plan-sprints.md](docs/plan-sprints.md).
 
 Code, tables and columns are named in Spanish, the language of the business. The main names: *pedido* (order), *evento* (delivery event), *mensajero* (courier), *liquidación* (cash the courier hands in at the office), *extracto del banco* (bank statement), *deuda* (debt), *cuarentena* (quarantine), *cierre de caja* (daily cash close).
 

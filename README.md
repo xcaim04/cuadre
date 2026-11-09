@@ -16,7 +16,7 @@ Pipeline bronze → silver → gold en DuckDB (local) y Dataform sobre BigQuery,
 
 ![Página de BI: la deuda por mensajero con sus tramos de antigüedad y la deuda diaria de M05 frente al resto](docs/capturas/bi-evidence.png)
 
-**Estado:** sprint 6 (BI y presentación). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
+**Estado:** v1.0.0, los 7 sprints terminados (0–6). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
 
 ## Fuentes
 
