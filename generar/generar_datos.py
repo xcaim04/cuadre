@@ -7,6 +7,8 @@ mensajero escritos de varias formas en la planilla de caja y depósitos que agru
 También escribe verdad.json: la deuda real de cada mensajero al cierre de cada día.
 El pipeline nunca la lee; solo la usan las pruebas.
 
+Cada fuente se exporta en un archivo por día (AAAA-MM-DD), como llegaría en una carga diaria.
+
 Uso: uv run python generar/generar_datos.py [carpeta_salida]
 """
 
@@ -165,8 +167,12 @@ def generar(salida: Path, semilla: int = SEMILLA) -> None:
                  ["id_pedido", "actualizado_en", "id_mensajero", "cliente", "direccion", "importe"], filas)
     for dia, lineas in eventos.items():
         (salida / "eventos" / f"{dia}.jsonl").write_text("\n".join(lineas) + "\n", encoding="utf-8")
-    escribir(salida / "liquidaciones.csv", ["fecha", "mensajero", "importe"], liquidaciones)
-    escribir(salida / "extracto_banco.csv", ["fecha", "referencia", "importe"], depositos)
+    # La planilla del cajero y el extracto del banco se exportan cada día, aunque vengan vacíos.
+    for carpeta, encabezado, filas in (("liquidaciones", ["fecha", "mensajero", "importe"], liquidaciones),
+                                       ("extracto_banco", ["fecha", "referencia", "importe"], depositos)):
+        (salida / carpeta).mkdir()
+        for dia in dias():
+            escribir(salida / carpeta / f"{dia}.csv", encabezado, [f for f in filas if f[0] == dia])
     (salida / "verdad.json").write_text(json.dumps({"semilla": semilla, "deuda_al_cierre": verdad}, indent=1))
 
 

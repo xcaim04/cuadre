@@ -10,7 +10,7 @@ Un pedido rechazado en la puerta nunca se cobra; una devolución es efectivo dev
 
 Pipeline bronze → silver → gold en DuckDB (local) y Dataform sobre BigQuery, con cargas incrementales, datos que llegan tarde, historial SCD tipo 2 y pruebas de calidad.
 
-**Estado:** sprint 3 (gold y calidad). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
+**Estado:** sprint 4 (carga incremental). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
 
 ## Fuentes
 
@@ -20,8 +20,8 @@ Los datos son sintéticos: [generar/generar_datos.py](generar/generar_datos.py) 
 |---|---|---|
 | `pedidos/AAAA-MM-DD.csv` | Pedidos de la tienda, uno por día | Un pedido editado reaparece con nuevo importe o dirección |
 | `eventos/AAAA-MM-DD.jsonl` | Entregas, rechazos y devoluciones de la mensajería | Duplicados, desordenados, un 5 % llega de 1 a 4 días tarde y algunas líneas no cumplen el contrato |
-| `liquidaciones.csv` | Planilla del cajero | El nombre del mensajero escrito de varias formas y pagos partidos en dos |
-| `extracto_banco.csv` | Depósitos de la oficina | Un depósito agrupa varios días |
+| `liquidaciones/AAAA-MM-DD.csv` | Planilla del cajero | El nombre del mensajero escrito de varias formas y pagos partidos en dos |
+| `extracto_banco/AAAA-MM-DD.csv` | Depósitos de la oficina | Un depósito agrupa varios días |
 | `verdad.json` | Deuda real de cada mensajero al cierre de cada día | Solo la leen las pruebas, nunca el pipeline |
 
 El generador no escribe en una carpeta que ya tenga archivos, para no pisar datos.
@@ -37,7 +37,7 @@ El generador no escribe en una carpeta que ya tenga archivos, para no pisar dato
 - **Estado vigente:** el estado de un pedido es el de su evento válido con mayor `ocurrido_en`, no el del último que llegó.
 - **Historial (SCD tipo 2):** cada versión de un pedido vale desde su `actualizado_en` hasta la versión siguiente, y el importe cobrable es el de la versión vigente al entregar.
 - **Alias de mensajeros:** un nombre se compara sin mayúsculas, tildes ni espacios de más, y se traduce a su id con [el seed de alias](seeds/alias_mensajeros.csv).
-- **Cuarentena:** lo que no se puede usar va a `silver.cuarentena` con su motivo (`entrega_sin_cobro`, `devolucion_sin_entrega`, `pedido_desconocido`, `mensajero_desconocido`, `tipo_desconocido`, `dato_invalido`, `importe_no_positivo`) y nunca cuenta como cero.
+- **Cuarentena:** lo que no se puede usar va a `silver.cuarentena` con su motivo (`entrega_sin_cobro`, `devolucion_sin_entrega`, `pedido_desconocido`, `mensajero_desconocido`, `tipo_desconocido`, `dato_invalido`, `importe_no_positivo`, `fuera_de_ventana`) y nunca cuenta como cero.
 - **Fuentes de sistemas propios:** pedidos y extracto bancario vienen de sistemas, no de personas; un tipo inválido ahí detiene el pipeline en lugar de esconderse en cuarentena.
 
 ## Gold
@@ -52,11 +52,23 @@ Cada archivo de [sql/calidad](sql/calidad) devuelve las filas que rompen una reg
 
 La prueba clave compara `gold.deuda_mensajero_dia` con `verdad.json`: la deuda de los 8 mensajeros en cada uno de los 60 días, al centavo.
 
+## Carga incremental
+
+Cada fuente llega en un archivo por día, y la carga diaria solo procesa lo nuevo:
+
+- **Bronze solo agrega:** un archivo se carga una vez; `meta.cargas` guarda su nombre, filas y md5. Si un archivo ya cargado cambia, la carga se detiene en lugar de mezclar dos versiones.
+- **Un archivo SQL = una tabla:** la cabecera declara la tabla (`-- tabla:`) y, si es incremental, su clave (`-- clave:`). El pipeline borra e inserta en una transacción las filas cuyas claves trae el resultado, así que repetir una carga no cambia nada.
+- **Ventana de reproceso:** cada carga recalcula silver y gold desde 5 días antes, para absorber los eventos que llegan tarde y las devoluciones cuya entrega llega después.
+- **Fuera de ventana:** un evento que llega más de 5 días después de ocurrir no reabre días cerrados: va a cuarentena con el motivo `fuera_de_ventana`.
+
+La prueba principal carga los 64 días uno a uno y comprueba que todas las tablas quedan idénticas a las de una carga completa.
+
 ## Ejecutar
 
 ```bash
 uv sync
 uv run python generar/generar_datos.py
-uv run python pipeline.py
+uv run python pipeline.py                      # carga completa
+uv run python pipeline.py --dia 2026-09-15     # carga diaria hasta ese día
 uv run pytest
 ```

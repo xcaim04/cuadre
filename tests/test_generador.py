@@ -17,9 +17,13 @@ def eventos_validos(raw):
             for linea in a.read_text(encoding="utf-8").splitlines() if not validar(linea)]
 
 
-def leer_csv(ruta):
-    with ruta.open(encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+def leer_csv(carpeta):
+    """Las filas de todos los archivos diarios de una fuente."""
+    filas = []
+    for archivo in sorted(carpeta.glob("*.csv")):
+        with archivo.open(encoding="utf-8") as f:
+            filas += list(csv.DictReader(f))
+    return filas
 
 
 def test_misma_semilla_mismos_archivos(raw, tmp_path):
@@ -45,9 +49,9 @@ def test_trae_los_defectos_prometidos(raw):
     assert any(horas != sorted(horas) for horas in por_archivo.values()), "sin desorden"
     assert {e["tipo"] for _, e in eventos} == {"entrega", "rechazo", "devolucion"}
     assert any(e["tipo"] == "entrega" and e["importe"] is None for _, e in eventos), "sin entregas sin cobro"
-    pedidos = [p for a in (raw / "pedidos").glob("*.csv") for p in leer_csv(a)]
+    pedidos = leer_csv(raw / "pedidos")
     assert max(Counter(p["id_pedido"] for p in pedidos).values()) > 1, "sin pedidos editados"
-    nombres = {fila["mensajero"] for fila in leer_csv(raw / "liquidaciones.csv")}
+    nombres = {fila["mensajero"] for fila in leer_csv(raw / "liquidaciones")}
     assert len(nombres) > len(MENSAJEROS), "sin alias de mensajeros"
     lineas = [linea for a in (raw / "eventos").glob("*.jsonl") for linea in a.read_text(encoding="utf-8").splitlines()]
     assert any(validar(linea) for linea in lineas), "sin líneas que rompan el contrato"
@@ -62,12 +66,12 @@ def test_la_verdad_cuadra_con_los_archivos(raw):
         deuda[e["id_mensajero"]] += signo * Decimal(e["importe"] or 0)
     alias = {nombre: m for m, nombres in MENSAJEROS.items() for nombre in nombres}
     liquidado = Decimal(0)
-    for fila in leer_csv(raw / "liquidaciones.csv"):
+    for fila in leer_csv(raw / "liquidaciones"):
         deuda[alias[fila["mensajero"]]] -= Decimal(fila["importe"])
         liquidado += Decimal(fila["importe"])
 
     verdad = json.loads((raw / "verdad.json").read_text())["deuda_al_cierre"]
     ultimo = max(v["fecha"] for v in verdad)
     assert {v["id_mensajero"]: Decimal(v["deuda"]) for v in verdad if v["fecha"] == ultimo} == dict(deuda)
-    depositado = sum(Decimal(f["importe"]) for f in leer_csv(raw / "extracto_banco.csv"))
+    depositado = sum(Decimal(f["importe"]) for f in leer_csv(raw / "extracto_banco"))
     assert 0 < depositado <= liquidado

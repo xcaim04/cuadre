@@ -22,8 +22,9 @@ def escribir(tmp_path, eventos: dict[str, list[str]], pedidos=P1, liquidaciones=
     (tmp_path / "eventos").mkdir()
     for dia, lineas in eventos.items():
         (tmp_path / "eventos" / f"{dia}.jsonl").write_text("\n".join(lineas) + "\n", encoding="utf-8")
-    (tmp_path / "liquidaciones.csv").write_text(liquidaciones, encoding="utf-8")
-    (tmp_path / "extracto_banco.csv").write_text(extracto, encoding="utf-8")
+    for fuente, contenido in (("liquidaciones", liquidaciones), ("extracto_banco", extracto)):
+        (tmp_path / fuente).mkdir()
+        (tmp_path / fuente / "2026-09-01.csv").write_text(contenido, encoding="utf-8")
     return tmp_path
 
 

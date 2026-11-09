@@ -69,10 +69,10 @@ Cada regla tiene su frase en el README y su prueba.
 - Prueba clave: `gold.deuda_mensajero_dia` es igual a `verdad.json`, centavo a centavo.
 
 ### Sprint 4: carga incremental y datos tardíos (v0.4.0)
-- `pipeline.py --dia AAAA-MM-DD` procesa solo los archivos nuevos de ese día.
-- Escritura idempotente con `MERGE` o `INSERT OR REPLACE` de DuckDB y clave única.
+- Cada fuente llega en un archivo por día; `pipeline.py --dia AAAA-MM-DD` carga solo los archivos nuevos hasta ese día.
+- Cada archivo SQL declara su tabla y su clave; la escritura es idempotente: borra e inserta en una transacción las filas cuyas claves trae el resultado.
 - Ventana de reproceso: cada carga recalcula los últimos `N=5` días de silver y gold para absorber los eventos tardíos.
-- `meta.cargas` registra qué archivo entró, cuándo y con cuántas filas, para no cargarlo dos veces.
+- `meta.cargas` registra qué archivo entró, cuándo, con cuántas filas y su md5, para no cargarlo dos veces y para detenerse si un archivo cambia después de cargado.
 - Pruebas:
   - cargar el mismo día dos veces da el mismo resultado;
   - la carga día a día da lo mismo que la carga completa;

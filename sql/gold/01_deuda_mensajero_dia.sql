@@ -1,6 +1,9 @@
+-- tabla: gold.deuda_mensajero_dia
+-- clave: fecha
 -- Deuda de cada mensajero al cierre de cada día: cobrado − devuelto − liquidado, acumulado.
 -- Antigüedad (FIFO): lo que el mensajero devuelve o liquida paga primero sus cobros más viejos.
-CREATE OR REPLACE TABLE gold.deuda_mensajero_dia AS
+-- Incremental: se reescriben los días desde {{desde}}; los anteriores ya no cambian, porque un evento
+-- con más días de atraso que la ventana va a cuarentena.
 WITH movimientos AS (
     SELECT id_mensajero, CAST(ocurrido_en AS DATE) AS fecha,
            CASE WHEN tipo = 'entrega' THEN importe ELSE 0 END AS cobrado,
@@ -32,6 +35,7 @@ tramos AS (
            greatest(0, least(d.cobrado, d.cobrado_acum - corte.pagado_acum)) AS sin_pagar
     FROM acumulado corte
     JOIN acumulado d ON d.id_mensajero = corte.id_mensajero AND d.fecha <= corte.fecha
+    WHERE corte.fecha >= DATE '{{desde}}'
 )
 SELECT a.fecha, a.id_mensajero, a.cobrado, a.devuelto, a.liquidado,
        a.cobrado_acum - a.pagado_acum AS deuda,
@@ -40,4 +44,5 @@ SELECT a.fecha, a.id_mensajero, a.cobrado, a.devuelto, a.liquidado,
        coalesce(sum(t.sin_pagar) FILTER (t.dias > 7), 0) AS deuda_mas_7
 FROM acumulado a
 JOIN tramos t USING (fecha, id_mensajero)
+WHERE a.fecha >= DATE '{{desde}}'
 GROUP BY ALL;
