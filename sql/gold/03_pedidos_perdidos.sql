@@ -1,6 +1,6 @@
+-- tabla: gold.pedidos_perdidos
 -- Pedido perdido: sigue sin entrega ni rechazo válidos más de 3 días después de creado.
 -- Si tiene algún evento en cuarentena, se muestra el motivo para saber por dónde buscar.
-CREATE OR REPLACE TABLE gold.pedidos_perdidos AS
 WITH corte AS (SELECT max(CAST(ocurrido_en AS DATE)) AS fecha FROM silver.eventos),
 creados AS (SELECT id_pedido, min(valido_desde) AS creado_en FROM silver.pedidos_historial GROUP BY id_pedido),
 motivos AS (
