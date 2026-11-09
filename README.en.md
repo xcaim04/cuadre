@@ -91,6 +91,14 @@ No Google account is needed to check it: [tests/test_dataform.py](tests/test_dat
 - **Does it add up?:** the pilot number computed three ways (sum of movements, sum per courier and cash close) must give the same result.
 - **Lost orders:** orders still open after 3 days, with their quarantine reason.
 
+### Screenshots
+
+| Light mode (full page) | Dark mode |
+|---|---|
+| ![Full BI page in light mode](docs/capturas/bi-evidence.png) | ![BI page in dark mode: headline, debt per courier and daily debt](docs/capturas/bi-oscuro.png) |
+
+The screenshots use the synthetic data from seed 7. The page follows the system theme; in dark mode, Evidence inverts the shades of the age buckets.
+
 ## Run it
 
 ```bash
