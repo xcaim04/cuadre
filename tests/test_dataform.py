@@ -17,7 +17,7 @@ import pytest
 import sqlglot
 
 import cargar_bigquery
-from pipeline import RAIZ, ejecutar, validar
+from pipeline import RAIZ, VENTANA, ejecutar, validar
 
 CLI = RAIZ / "dataform" / "node_modules" / ".bin" / "dataform"
 GOLD = ("deuda_mensajero_dia", "cierre_caja", "pedidos_perdidos")
@@ -107,13 +107,18 @@ def test_mismas_tablas_y_pruebas_que_duckdb(compilado):
     assert {a["target"]["name"] for a in compilado["assertions"]} == {f.stem for f in (RAIZ / "sql" / "calidad").glob("*.sql")}
 
 
+def test_la_ventana_es_la_misma_en_dataform_y_en_local():
+    comun = (RAIZ / "dataform" / "includes" / "comun.js").read_text()
+    assert int(re.search(r"const VENTANA = (\d+);", comun).group(1)) == VENTANA
+
+
 def test_gold_incremental_lee_solo_las_particiones_de_la_ventana(compilado):
     """En BigQuery, filtrar por la columna de partición es lo que hace que una carga diaria no relea todo gold."""
     incrementales = [t for t in compilado["tables"] if t["target"]["schema"] == "gold" and t["type"] == "incremental"]
     assert incrementales
     for tabla in incrementales:
         columna = tabla["bigquery"]["partitionBy"]
-        assert re.search(rf"WHERE {columna} >= \(SELECT DATE_SUB\(MAX\({columna}\), INTERVAL 5 DAY\)", tabla["incrementalQuery"]), nombre(tabla)
+        assert re.search(rf"WHERE {columna} >= \(SELECT DATE_SUB\(MAX\({columna}\), INTERVAL {VENTANA} DAY\)", tabla["incrementalQuery"]), nombre(tabla)
 
 
 def test_da_los_mismos_numeros_que_duckdb(compilado, local):
