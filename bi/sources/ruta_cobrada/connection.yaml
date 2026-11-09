@@ -1,0 +1,5 @@
+# Lee las tablas gold que publica pipeline.py en Parquet, en data/gold/, solo si pasan las pruebas de calidad.
+name: ruta_cobrada
+type: duckdb
+options:
+  filename: ":memory:"
