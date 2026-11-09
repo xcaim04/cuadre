@@ -1,0 +1,51 @@
+config {
+  type: "incremental",
+  schema: "gold",
+  uniqueKey: ["fecha", "id_mensajero"],
+  bigquery: { partitionBy: "fecha", clusterBy: ["id_mensajero"] },
+  description: "Deuda de cada mensajero al cierre de cada día (cobrado − devuelto − liquidado, acumulado), repartida por antigüedad FIFO: lo que devuelve o liquida paga primero sus cobros más viejos. Incremental: se reescriben los últimos VENTANA días."
+}
+
+WITH movimientos AS (
+    SELECT id_mensajero, DATE(ocurrido_en) AS fecha,
+           IF(tipo = 'entrega', importe, 0) AS cobrado,
+           IF(tipo = 'devolucion', importe, 0) AS devuelto,
+           CAST(0 AS NUMERIC) AS liquidado
+    FROM ${ref("silver", "eventos")}
+    UNION ALL
+    SELECT id_mensajero, fecha, 0, 0, importe FROM ${ref("silver", "liquidaciones")}
+),
+calendario AS (
+    SELECT fecha, id_mensajero
+    FROM UNNEST(GENERATE_DATE_ARRAY((SELECT MIN(fecha) FROM movimientos), (SELECT MAX(fecha) FROM movimientos))) AS fecha
+    CROSS JOIN (SELECT DISTINCT id_mensajero FROM ${ref("silver", "alias_mensajeros")})
+),
+diario AS (
+    SELECT c.fecha, c.id_mensajero, COALESCE(SUM(m.cobrado), 0) AS cobrado,
+           COALESCE(SUM(m.devuelto), 0) AS devuelto, COALESCE(SUM(m.liquidado), 0) AS liquidado
+    FROM calendario c LEFT JOIN movimientos m USING (fecha, id_mensajero)
+    GROUP BY c.fecha, c.id_mensajero
+),
+acumulado AS (
+    SELECT *, SUM(cobrado) OVER w AS cobrado_acum, SUM(devuelto + liquidado) OVER w AS pagado_acum
+    FROM diario WINDOW w AS (PARTITION BY id_mensajero ORDER BY fecha)
+),
+corte AS (
+    SELECT * FROM acumulado
+    ${when(incremental(), `WHERE fecha >= (SELECT DATE_SUB(MAX(fecha), INTERVAL ${comun.VENTANA} DAY) FROM ${self()})`)}
+),
+tramos AS (
+    -- Parte de lo cobrado el día d que sigue sin pagar al cierre del día del corte.
+    SELECT c.fecha, c.id_mensajero, DATE_DIFF(c.fecha, d.fecha, DAY) AS dias,
+           GREATEST(0, LEAST(d.cobrado, d.cobrado_acum - c.pagado_acum)) AS sin_pagar
+    FROM corte c
+    JOIN acumulado d ON d.id_mensajero = c.id_mensajero AND d.fecha <= c.fecha
+)
+SELECT c.fecha, c.id_mensajero, c.cobrado, c.devuelto, c.liquidado,
+       c.cobrado_acum - c.pagado_acum AS deuda,
+       SUM(IF(t.dias <= 2, t.sin_pagar, 0)) AS deuda_0_2,
+       SUM(IF(t.dias BETWEEN 3 AND 7, t.sin_pagar, 0)) AS deuda_3_7,
+       SUM(IF(t.dias > 7, t.sin_pagar, 0)) AS deuda_mas_7
+FROM corte c
+JOIN tramos t USING (fecha, id_mensajero)
+GROUP BY c.fecha, c.id_mensajero, c.cobrado, c.devuelto, c.liquidado, c.cobrado_acum, c.pagado_acum

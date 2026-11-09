@@ -1,0 +1,3 @@
+config { type: "table", schema: "silver", description: "Las liquidaciones que se pueden usar." }
+
+SELECT * EXCEPT (motivo) FROM ${ref("silver", "liquidaciones_revisadas")} WHERE motivo IS NULL

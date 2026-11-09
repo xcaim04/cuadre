@@ -1,0 +1,23 @@
+config { type: "table", schema: "silver", description: "Foto del estado actual. Reglas: el estado es el del evento válido con mayor ocurrido_en, no el del último que llegó; el importe cobrable es el de la versión vigente al entregar." }
+
+WITH ultimo AS (
+    SELECT id_pedido, tipo FROM ${ref("silver", "eventos")}
+    WHERE TRUE
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY id_pedido ORDER BY ocurrido_en DESC, id_evento DESC) = 1
+),
+entrega AS (
+    SELECT id_pedido, ocurrido_en AS entregado_en, importe AS importe_cobrado FROM ${ref("silver", "eventos")}
+    WHERE tipo = 'entrega'
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY id_pedido ORDER BY ocurrido_en DESC, id_evento DESC) = 1
+)
+SELECT h.id_pedido, h.id_mensajero, h.cliente, h.direccion, h.importe AS importe_actual,
+       CASE u.tipo WHEN 'entrega' THEN 'entregado' WHEN 'rechazo' THEN 'rechazado'
+                   WHEN 'devolucion' THEN 'devuelto' ELSE 'pendiente' END AS estado,
+       e.entregado_en, e.importe_cobrado, v.importe AS importe_cobrable
+FROM ${ref("silver", "pedidos_historial")} h
+LEFT JOIN ultimo u USING (id_pedido)
+LEFT JOIN entrega e USING (id_pedido)
+LEFT JOIN ${ref("silver", "pedidos_historial")} v
+       ON v.id_pedido = h.id_pedido AND v.valido_desde <= e.entregado_en
+      AND (v.valido_hasta IS NULL OR e.entregado_en < v.valido_hasta)
+WHERE h.valido_hasta IS NULL

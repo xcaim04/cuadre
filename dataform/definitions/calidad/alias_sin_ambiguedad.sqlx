@@ -1,0 +1,3 @@
+config { type: "assertion", description: "Un alias normalizado lleva a un solo mensajero." }
+
+SELECT alias FROM ${ref("silver", "alias_mensajeros")} GROUP BY alias HAVING COUNT(DISTINCT id_mensajero) > 1

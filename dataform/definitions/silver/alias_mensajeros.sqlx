@@ -1,0 +1,4 @@
+config { type: "table", schema: "silver", description: "Regla: un nombre de mensajero se traduce a su id con el seed de alias, comparado ya normalizado." }
+
+SELECT DISTINCT ${comun.normalizar("alias")} AS alias, id_mensajero
+FROM ${ref("bronze", "alias_mensajeros")}
