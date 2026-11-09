@@ -12,14 +12,13 @@ Después: cd dataform && npx dataform run .
 
 import argparse
 import csv
-import json
 import shlex
 import subprocess
 import tempfile
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from pipeline import CONTRATO, FUENTES, RAIZ, validar
+from pipeline import CONTRATO, FUENTES, RAIZ, leer_eventos
 
 # Columnas de cada tabla de bronze, sin las que añade la carga (_archivo_origen, _cargado_en, _fecha_archivo).
 COLUMNAS = {
@@ -51,15 +50,7 @@ def preparar_archivos(raw: Path, destino: Path, dia: date | None = None) -> list
             if dia and fecha != dia:
                 continue
             if fuente == "eventos":
-                validos, rechazos = [], []
-                for n, linea in enumerate(archivo.read_text(encoding="utf-8").splitlines(), 1):
-                    if not linea.strip():
-                        continue
-                    if motivo := validar(linea):
-                        rechazos.append([n, linea, motivo])
-                    else:
-                        evento = json.loads(linea)
-                        validos.append([evento.get(c["name"]) for c in CONTRATO] + [n])
+                validos, rechazos = leer_eventos(archivo)
                 escribir("eventos", fecha, archivo.name, validos)
                 escribir("rechazos_contrato", fecha, archivo.name, rechazos)
                 continue

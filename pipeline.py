@@ -44,22 +44,32 @@ def validar(linea: str) -> str | None:
     return None
 
 
-def cargar_eventos(con: duckdb.DuckDBPyConnection, archivo: Path) -> int:
-    """Lo que cumple el contrato va a bronze.eventos; lo demás, a bronze.rechazos_contrato con su motivo."""
-    campos = [c["name"] for c in CONTRATO]
+def leer_eventos(archivo: Path) -> tuple[list[list], list[list]]:
+    """Separa las líneas de un archivo de eventos: válidas como [campos del contrato..., _linea]
+    y rechazadas como [_linea, contenido, motivo]. La usan la carga local y la de BigQuery."""
     validos, rechazos = [], []
     for n, linea in enumerate(archivo.read_text(encoding="utf-8").splitlines(), 1):
         if not linea.strip():
             continue
         if motivo := validar(linea):
-            rechazos.append([archivo.name, n, linea, motivo])
+            rechazos.append([n, linea, motivo])
         else:
             evento = json.loads(linea)
-            validos.append([evento.get(c) for c in campos] + [archivo.name, n])
+            validos.append([evento.get(c["name"]) for c in CONTRATO] + [n])
+    return validos, rechazos
+
+
+def cargar_eventos(con: duckdb.DuckDBPyConnection, archivo: Path) -> int:
+    """Lo que cumple el contrato va a bronze.eventos; lo demás, a bronze.rechazos_contrato con su motivo."""
+    validos, rechazos = leer_eventos(archivo)
+    columnas = [c["name"] for c in CONTRATO] + ["_linea"]
     if validos:
-        con.executemany(f"INSERT INTO bronze.eventos VALUES ({', '.join('?' * (len(campos) + 2))}, current_timestamp)", validos)
+        con.executemany(f"INSERT INTO bronze.eventos ({', '.join(columnas)}, _archivo_origen, _cargado_en) "
+                        f"VALUES ({', '.join('?' * (len(columnas) + 1))}, current_timestamp)",
+                        [v + [archivo.name] for v in validos])
     if rechazos:
-        con.executemany("INSERT INTO bronze.rechazos_contrato VALUES (?, ?, ?, ?, current_timestamp)", rechazos)
+        con.executemany("INSERT INTO bronze.rechazos_contrato (_linea, contenido, motivo, _archivo_origen, _cargado_en) "
+                        "VALUES (?, ?, ?, ?, current_timestamp)", [r + [archivo.name] for r in rechazos])
     return len(validos) + len(rechazos)
 
 
