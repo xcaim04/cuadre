@@ -1,5 +1,5 @@
+-- tabla: silver.cuarentena
 -- Regla: lo que no se puede usar queda en cuarentena con su motivo; nunca cuenta como cero.
-CREATE OR REPLACE TABLE silver.cuarentena AS
 SELECT 'eventos' AS origen, id_evento AS referencia, id_pedido, id_mensajero, CAST(ocurrido_en AS DATE) AS fecha,
        importe, motivo
 FROM silver.eventos_revisados WHERE motivo IS NOT NULL

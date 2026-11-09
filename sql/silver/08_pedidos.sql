@@ -1,7 +1,7 @@
--- Reglas de pedidos:
+-- tabla: silver.pedidos
+-- Reglas de pedidos (foto del estado actual, se reconstruye entera):
 -- 1. El estado de un pedido es el de su evento válido con mayor ocurrido_en, no el del último que llegó.
 -- 2. El importe cobrable es el de la versión del pedido vigente en el momento de la entrega.
-CREATE OR REPLACE TABLE silver.pedidos AS
 WITH ultimo AS (
     SELECT id_pedido, tipo FROM silver.eventos
     QUALIFY row_number() OVER (PARTITION BY id_pedido ORDER BY ocurrido_en DESC, id_evento DESC) = 1

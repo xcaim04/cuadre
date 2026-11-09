@@ -2,6 +2,7 @@
 
 import csv
 
+from fabricar import escribir
 from pipeline import ejecutar
 
 
@@ -23,20 +24,15 @@ def test_bronze_carga_todas_las_filas(raw):
     assert contar(con, "eventos") + contar(con, "rechazos_contrato") == len(lineas)
     assert contar(con, "rechazos_contrato") > 0
     assert contar(con, "pedidos") == contar_filas_csv(*(raw / "pedidos").glob("*.csv"))
-    assert contar(con, "liquidaciones") == contar_filas_csv(raw / "liquidaciones.csv")
-    assert contar(con, "extracto_banco") == contar_filas_csv(raw / "extracto_banco.csv")
+    assert contar(con, "liquidaciones") == contar_filas_csv(*(raw / "liquidaciones").glob("*.csv"))
+    assert contar(con, "extracto_banco") == contar_filas_csv(*(raw / "extracto_banco").glob("*.csv"))
     for tabla in ("pedidos", "liquidaciones", "extracto_banco", "eventos"):
         assert contar(con, tabla, "_archivo_origen IS NULL OR _cargado_en IS NULL") == 0
 
 
 def test_contrato_aparta_cada_linea_mala_con_su_motivo(tmp_path):
-    (tmp_path / "pedidos").mkdir()
-    (tmp_path / "pedidos" / "2026-09-01.csv").write_text("id_pedido,actualizado_en,id_mensajero,cliente,direccion,importe\n")
-    (tmp_path / "liquidaciones.csv").write_text("fecha,mensajero,importe\n")
-    (tmp_path / "extracto_banco.csv").write_text("fecha,referencia,importe\n")
     base = '"id_pedido": "P1", "id_mensajero": "M01", "tipo": "entrega", "ocurrido_en": "2026-09-01 13:00:00"'
-    (tmp_path / "eventos").mkdir()
-    (tmp_path / "eventos" / "2026-09-01.jsonl").write_text("\n".join([
+    escribir(tmp_path, {"2026-09-01": [
         '{"id_evento": "E1", ' + base + ', "importe": "100.00"}',
         '{"id_evento": "E2", ' + base + '}',  # importe es opcional: un rechazo no lo trae
         '{"id_evento": "E3", ' + base + ', "importe": "1", "propina": "5"}',
@@ -46,7 +42,7 @@ def test_contrato_aparta_cada_linea_mala_con_su_motivo(tmp_path):
         '{"id_evento": "E7", "id_pedido": "P1',
         '["no", "es", "un", "objeto"]',
         "",
-    ]) + "\n")
+    ]})
     con = ejecutar(tmp_path)
     assert con.execute("SELECT list(id_evento ORDER BY _linea) FROM bronze.eventos").fetchone()[0] == ["E1", "E2"]
     assert contar(con, "eventos", "id_evento = 'E2' AND importe IS NULL") == 1
