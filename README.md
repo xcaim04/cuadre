@@ -1,5 +1,7 @@
 # Ruta Cobrada
 
+**Español** · [English](README.en.md)
+
 Conciliación del efectivo de una mensajería que cobra contra entrega: cuánto dinero tiene cada mensajero ahora mismo y por qué la caja no cuadra con lo vendido.
 
 El número piloto, que debe cuadrar al centavo:
@@ -10,7 +12,11 @@ Un pedido rechazado en la puerta nunca se cobra; una devolución es efectivo dev
 
 Pipeline bronze → silver → gold en DuckDB (local) y Dataform sobre BigQuery, con cargas incrementales, datos que llegan tarde, historial SCD tipo 2 y pruebas de calidad.
 
-**Estado:** sprint 5 (Dataform y BigQuery). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
+> **Hallazgo:** al cierre del 30 de octubre los mensajeros tienen 200 503,50 sin liquidar, y uno solo, Reinier Castillo (M05), tiene el 67 %. Desde finales de septiembre pasa menos por la oficina y liquida solo una parte de lo que cobra.
+
+![Página de BI: la deuda por mensajero con sus tramos de antigüedad y la deuda diaria de M05 frente al resto](docs/capturas/bi-evidence.png)
+
+**Estado:** v1.0.0, los 7 sprints terminados (0–6). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
 
 ## Fuentes
 
@@ -73,6 +79,24 @@ La prueba principal carga los 64 días uno a uno y comprueba que todas las tabla
 
 No hace falta cuenta de Google para comprobarlo: [tests/test_dataform.py](tests/test_dataform.py) compila el proyecto con la CLI de Dataform, valida que es SQL de BigQuery con sqlglot, lo traduce a DuckDB y comprueba que gold y las 12 aserciones dan lo mismo que la versión local, tanto en una ejecución completa como en una incremental. Lo que no está probado es la ejecución contra BigQuery real.
 
+## BI
+
+[bi/](bi) es una página de [Evidence](https://evidence.dev) que lee los Parquet que publica el pipeline en `data/gold/`, así que solo muestra datos que pasaron las 12 pruebas de calidad.
+
+- **Titular:** la deuda total de los mensajeros y cuánto de ella tiene el que más debe.
+- **Quién tiene el efectivo:** la deuda de cada mensajero al cierre, partida en 0–2, 3–7 y más de 7 días, y la deuda diaria del mensajero atrasado frente a los otros siete.
+- **Dónde está el efectivo cada día:** lo que siguen teniendo los mensajeros y lo que está en la oficina sin depositar.
+- **¿Cuadra?:** el número piloto calculado de tres formas (suma de movimientos, suma por mensajero y cierre de caja) tiene que dar lo mismo.
+- **Pedidos perdidos:** los pedidos sin cierre después de 3 días, con su motivo de cuarentena.
+
+### Capturas
+
+| Modo claro (página completa) | Modo oscuro |
+|---|---|
+| ![Página de BI completa en modo claro](docs/capturas/bi-evidence.png) | ![Página de BI en modo oscuro: titular, deuda por mensajero y deuda diaria](docs/capturas/bi-oscuro.png) |
+
+Las capturas usan los datos sintéticos de la semilla 7. La página sigue el tema del sistema; en oscuro, Evidence invierte los tonos de los tramos de antigüedad.
+
 ## Ejecutar
 
 ```bash
@@ -84,6 +108,9 @@ uv run pytest
 
 # Dataform (opcional; sin node_modules sus pruebas se saltan)
 cd dataform && npm install && npx dataform compile .
+
+# BI (después de pipeline.py)
+cd bi && npm install && npm run sources && npm run dev
 
 # BigQuery (necesita gcloud y bq con sesión iniciada)
 uv run python cargar_bigquery.py --proyecto <id> --dia 2026-09-15 --mostrar
