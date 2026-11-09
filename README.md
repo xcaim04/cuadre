@@ -16,7 +16,7 @@ Pipeline bronze → silver → gold en DuckDB (local) y Dataform sobre BigQuery,
 
 ![Página de BI: la deuda por mensajero con sus tramos de antigüedad y la deuda diaria de M05 frente al resto](docs/capturas/bi-evidence.png)
 
-**Estado:** sprint 6 (BI y presentación). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
+**Estado:** v1.0.0, los 7 sprints terminados (0–6). El plan completo está en [docs/plan-sprints.md](docs/plan-sprints.md).
 
 ## Fuentes
 
@@ -88,6 +88,14 @@ No hace falta cuenta de Google para comprobarlo: [tests/test_dataform.py](tests/
 - **Dónde está el efectivo cada día:** lo que siguen teniendo los mensajeros y lo que está en la oficina sin depositar.
 - **¿Cuadra?:** el número piloto calculado de tres formas (suma de movimientos, suma por mensajero y cierre de caja) tiene que dar lo mismo.
 - **Pedidos perdidos:** los pedidos sin cierre después de 3 días, con su motivo de cuarentena.
+
+### Capturas
+
+| Modo claro (página completa) | Modo oscuro |
+|---|---|
+| ![Página de BI completa en modo claro](docs/capturas/bi-evidence.png) | ![Página de BI en modo oscuro: titular, deuda por mensajero y deuda diaria](docs/capturas/bi-oscuro.png) |
+
+Las capturas usan los datos sintéticos de la semilla 7. La página sigue el tema del sistema; en oscuro, Evidence invierte los tonos de los tramos de antigüedad.
 
 ## Ejecutar
 

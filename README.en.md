@@ -16,7 +16,7 @@ A bronze → silver → gold pipeline on DuckDB (local) and Dataform on BigQuery
 
 ![BI page: debt per courier split by age, and M05's daily debt against the rest](docs/capturas/bi-evidence.png)
 
-**Status:** sprint 6 (BI and presentation). The full plan is in [docs/plan-sprints.md](docs/plan-sprints.md).
+**Status:** v1.0.0, all 7 sprints done (0–6). The full plan is in [docs/plan-sprints.md](docs/plan-sprints.md).
 
 Code, tables and columns are named in Spanish, the language of the business. The main names: *pedido* (order), *evento* (delivery event), *mensajero* (courier), *liquidación* (cash the courier hands in at the office), *extracto del banco* (bank statement), *deuda* (debt), *cuarentena* (quarantine), *cierre de caja* (daily cash close).
 
@@ -90,6 +90,14 @@ No Google account is needed to check it: [tests/test_dataform.py](tests/test_dat
 - **Where the cash is each day:** what the couriers still hold and what sits at the office not yet deposited.
 - **Does it add up?:** the pilot number computed three ways (sum of movements, sum per courier and cash close) must give the same result.
 - **Lost orders:** orders still open after 3 days, with their quarantine reason.
+
+### Screenshots
+
+| Light mode (full page) | Dark mode |
+|---|---|
+| ![Full BI page in light mode](docs/capturas/bi-evidence.png) | ![BI page in dark mode: headline, debt per courier and daily debt](docs/capturas/bi-oscuro.png) |
+
+The screenshots use the synthetic data from seed 7. The page follows the system theme; in dark mode, Evidence inverts the shades of the age buckets.
 
 ## Run it
 
