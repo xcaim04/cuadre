@@ -1,7 +1,7 @@
 """Genera los archivos crudos (sintéticos) de Ruta Cobrada, una mensajería ficticia que cobra contra entrega.
 
 Los defectos son a propósito: pedidos editados después de creados, eventos duplicados,
-desordenados o que llegan días tarde, líneas que no cumplen el contrato, nombres de
+desordenados o que llegan días tarde, entregas marcadas sin cobro, líneas que no cumplen el contrato, nombres de
 mensajero escritos de varias formas en la planilla de caja y depósitos que agrupan días.
 
 También escribe verdad.json: la deuda real de cada mensajero al cierre de cada día.
@@ -40,6 +40,7 @@ CLIENTES = ["Ana López", "Raúl Hernández", "Marta Ruiz", "Pedro Valdés", "Ir
             "Lázaro Torres", "Elena Ortiz", "Rosa Peña", "Camilo Reyes", "Nidia Blanco", "Félix Morales"]
 
 P_PENDIENTE = 0.03   # sin entrega todavía
+P_SIN_COBRO = 0.3    # de los pendientes: la app los marca entregados sin cobro, pero no hubo efectivo
 P_RECHAZO = 0.08     # el cliente no acepta en la puerta
 P_EDICION = 0.15     # el pedido cambia de importe o dirección después de creado
 P_DEVOLUCION = 0.03  # efectivo devuelto al cliente después de cobrar
@@ -104,6 +105,8 @@ def generar(salida: Path, semilla: int = SEMILLA) -> None:
             entrega = momento(rnd, dia + timedelta(days=rnd.randint(0, 2)), 13, 20)
             destino = rnd.random()
             if entrega.date() > FIN or destino < P_PENDIENTE:
+                if entrega.date() <= FIN and rnd.random() < P_SIN_COBRO:
+                    evento("entrega", id_pedido, mensajero, entrega, None)
                 continue
             if destino < P_PENDIENTE + P_RECHAZO:
                 evento("rechazo", id_pedido, mensajero, entrega, None)
